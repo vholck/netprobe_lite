@@ -4,10 +4,12 @@ name: netprobe
 
 networks:
   netprobe-net:
+  pihole:
+    external: true
 
 services:
   redis:
-    restart: always
+    restart: unless-stopped
     container_name: netprobe-redis
     image: "redis:latest"
     volumes:
@@ -19,7 +21,7 @@ services:
       - 8.8.4.4      
 
   netprobe:
-    restart: always
+    restart: unless-stopped
     container_name: netprobe-probe
     image: "plaintextpackets/netprobe:latest"
     pull_policy: always
@@ -29,6 +31,7 @@ services:
       MODULE: "NETPROBE"
     networks:
       - netprobe-net
+      - pihole
     dns:
       - 8.8.8.8
       - 8.8.4.4      
@@ -46,10 +49,10 @@ services:
       - netprobe-net
     dns:
       - 8.8.8.8
-      - 8.8.4.4      
+      - 8.8.4.4
 
   presentation:
-    restart: always
+    restart: unless-stopped
     container_name: netprobe-presentation
     image: "plaintextpackets/netprobe:latest"
     pull_policy: always
@@ -64,12 +67,13 @@ services:
       - 8.8.4.4      
 
   prometheus:
-    restart: always
+    restart: unless-stopped
     container_name: netprobe-prometheus
     image: "prom/prometheus"
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus  # Persistent local storage for Prometheus data
+      # - prometheus_data:/prometheus  # Persistent local storage for Prometheus data
+      - ${USER_HOME_PATH:-/home/core}/dockerdata/netprobe/prometheus/:/prometheus # Persistent local storage for Prometheus data
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -78,25 +82,29 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4      
+    user: "0"
 
   grafana:
-    restart: always
+    restart: unless-stopped
     image: grafana/grafana-enterprise
     container_name: netprobe-grafana
     volumes:
       - ./config/grafana/datasources/automatic.yml:/etc/grafana/provisioning/datasources/automatic.yml
       - ./config/grafana/dashboards/main.yml:/etc/grafana/provisioning/dashboards/main.yml
       - ./config/grafana/dashboards/netprobe.json:/var/lib/grafana/dashboards/netprobe.json
-      - grafana_data:/var/lib/grafana
+      # - grafana_data:/var/lib/grafana
+      - ${USER_HOME_PATH:-/home/core}/dockerdata/netprobe/grafana/:/var/lib/grafana
     ports:
-      - '3001:3000'
+      - '3002:3000'
     networks:
       - netprobe-net
+      - pihole
     dns:
       - 8.8.8.8
-      - 8.8.4.4      
+      - 8.8.4.4
+    user: "0"
       
-volumes:
-  prometheus_data:
-  grafana_data:
+# volumes:
+#   prometheus_data:
+#   grafana_data:
   
